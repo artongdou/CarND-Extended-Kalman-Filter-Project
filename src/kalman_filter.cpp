@@ -12,14 +12,16 @@ KalmanFilter::KalmanFilter() {}
 
 KalmanFilter::~KalmanFilter() {}
 
-void KalmanFilter::Init(VectorXd &x_in, MatrixXd &P_in, MatrixXd &F_in,
-                        MatrixXd &H_in, MatrixXd &R_in, MatrixXd &Q_in) {
+void KalmanFilter::Init(Eigen::VectorXd &x_in, Eigen::MatrixXd &P_in,
+                        Eigen::MatrixXd &H_laser_in, Eigen::MatrixXd &R_laser_in,
+                        Eigen::MatrixXd &R_radar_in) {
   x_ = x_in;
   P_ = P_in;
-  F_ = F_in;
-  H_ = H_in;
-  R_ = R_in;
-  Q_ = Q_in;
+  H_laser_ = H_laser_in;
+  R_laser_ = R_laser_in;
+  R_radar_ = R_radar_in;
+  I_ = MatrixXd::Identity(4,4);
+  tools_ = Tools();
 }
 
 void KalmanFilter::Predict() {
@@ -34,14 +36,13 @@ void KalmanFilter::Update(const VectorXd &z) {
   /**
    * TODO: update the state by using Kalman Filter equations
    */
-  int x_size = x_.size();
-  MatrixXd I = MatrixXd::Identity(x_size, x_size);
   
-  VectorXd y = z - H_ * x_;
-  MatrixXd S = H_ * P_ * H_.transpose() + R_;
-  MatrixXd K = P_ * H_.transpose() * S.inverse();
+  MatrixXd Ht = H_laser_.transpose();
+  VectorXd y = z - H_laser_ * x_;
+  MatrixXd S = H_laser_ * P_ * Ht + R_laser_;
+  MatrixXd K = P_ * Ht * S.inverse();
   x_ = x_ + K * y;
-  P_ = (I - K * H_) * P_;
+  P_ = (I_ - K * H_laser_) * P_;
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
@@ -58,18 +59,26 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   
   float rho = sqrt(px*px + py*py);
   float phi = atan2(py, px);
-  if (fabs(rho) < 0.0001) {
-    return;
+  if (rho < 0.000001) {
+    rho = 0.000001;
   }
   float rho_dot = (px*vx + py*vy)/rho;
   VectorXd h_prime(3);
   h_prime << rho, phi, rho_dot;
   VectorXd y = z - h_prime;
+  
   // Constrain phi to [-pi, pi]
-  y(1) = fmod(y(1), M_PI);
+  while (y(1) < -M_PI) {
+    y(1) += 2 * M_PI;
+  }
+  while (y(1) > M_PI) {
+    y(1) -= 2 * M_PI;
+  }
 
-  MatrixXd S = H_ * P_ * H_.transpose() + R_;
-  MatrixXd K = P_ * H_.transpose() * S.inverse();
+  MatrixXd Hj = tools_.CalculateJacobian(x_);
+  MatrixXd Hjt = Hj.transpose();
+  MatrixXd S = Hj * P_ * Hjt + R_radar_;
+  MatrixXd K = P_ * Hjt * S.inverse();
   x_ = x_ + K * y;
-  P_ = (I - K * H_) * P_;
+  P_ = (I - K * Hj) * P_;
 }
