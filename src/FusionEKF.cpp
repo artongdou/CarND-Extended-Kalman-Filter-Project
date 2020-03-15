@@ -37,10 +37,7 @@ FusionEKF::FusionEKF() {
   H_laser_ << 1, 0, 0, 0,
               0, 1, 0, 0;
 
-  /**
-   * TODO: Finish initializing the FusionEKF.
-   * TODO: Set the process and measurement noises
-   */
+  // Measurement noise
   noise_ax = 9.0;
   noise_ay = 9.0;
 
@@ -82,7 +79,10 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
          0, 0, 1000, 0,
          0, 0, 0, 1000;
     
-    ekf_.Init(x, P, H_laser_, R_laser_, R_radar_);
+    MatrixXd F =MatrixXd(4,4);
+    F << MatrixXd::Identity(4,4);
+    
+    ekf_.Init(x, P, H_laser_, R_laser_, R_radar_, F);
     
     previous_timestamp_ = measurement_pack.timestamp_;
 
@@ -103,11 +103,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float dt_4 = dt_3 * dt;
 
   // Modify the F matrix so that the time is integrated
-  ekf_.F_ = MatrixXd(4, 4);
-  ekf_.F_ << 1, 0, dt, 0,
-             0, 1, 0,  dt,
-             0, 0, 1,  0,
-             0, 0, 0,  1;
+  ekf_.F_(0,2) = dt;
+  ekf_.F_(1,3) = dt;
 
   // set the process covariance matrix Q
   ekf_.Q_ = MatrixXd(4, 4);
@@ -121,26 +118,20 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
    * Update
    */
 
-  /**
-   * TODO:
-   * - Use the sensor type to perform the update step.
-   * - Update the state and covariance matrices.
-   */
-  Tools tools;
+  cout << "###############################" << endl;
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
-    // TODO: Radar updates
     std::cout << "RADAR update" << std::endl;
     ekf_.UpdateEKF(measurement_pack.raw_measurements_);
 
-  } else {
-    // TODO: Laser updates
+  } else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
     std::cout << "Laser update" << std::endl;
     ekf_.Update(measurement_pack.raw_measurements_);
+  } else {
+    cerr << "Unknown sensor type - Error" << endl;
   }
 
   // print the output
-  cout << "-------------------------" << endl;
   cout << "x_ = \n" << ekf_.x_ << endl;
   cout << "P_ = \n" << ekf_.P_ << endl;
-  cout << "-------------------------" << endl;
+  cout << "###############################" << endl;
 }

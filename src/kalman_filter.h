@@ -8,6 +8,15 @@ class KalmanFilter {
 private:
   // Identity Matrix
   Eigen::MatrixXd I_;
+  
+  /**
+   * Calculate the Kalman gain
+   * @param H mesaurement matrix
+   * @param P covariance matrix
+   * @param R mesasurment noise matrix
+   */
+  Eigen::MatrixXd CalculateKalmanGain(Eigen::MatrixXd H, Eigen::MatrixXd P,
+                                      Eigen::MatrixXd R);
 public:
   /**
    * Constructor
@@ -28,7 +37,8 @@ public:
    * @param R_radar_in Radar Measurement covariance matrix
    */
   void Init(Eigen::VectorXd &x_in, Eigen::MatrixXd &P_in, Eigen::MatrixXd &H_laser_in,
-            Eigen::MatrixXd &R_laser_in, Eigen::MatrixXd &R_radar_in);
+            Eigen::MatrixXd &R_laser_in, Eigen::MatrixXd &R_radar_in,
+            Eigen::MatrixXd &F_in);
 
   /**
    * Prediction Predicts the state and the state covariance
@@ -48,6 +58,11 @@ public:
    * @param z The measurement at k+1
    */
   void UpdateEKF(const Eigen::VectorXd &z);
+  
+  /**
+  * get polar state vector
+  */
+  Eigen::VectorXd get_polar_state();
 
   // state vector
   Eigen::VectorXd x_;
