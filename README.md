@@ -60,6 +60,7 @@ From project root directory
 ```
 ./build/ExtendedKF
 ```
+Open Term2 Simulator to connect to ths program via port `4567`.
 
 ### Performance
 
